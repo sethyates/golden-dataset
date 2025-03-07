@@ -108,7 +108,7 @@ def show_dataset(
         table.add_column("Description", style="white")
         table.add_column("Dependencies", style="green")
         table.add_column("Exported At", style="yellow")
-        exported_at = metadata.exported_at.isoformat() if metadata.exported_at else "N/A"
+        exported_at = dataset.exported_at.isoformat() if dataset.exported_at else "N/A"
         table.add_row(
             dataset.name,
             dataset.title,

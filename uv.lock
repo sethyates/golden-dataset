@@ -80,9 +80,7 @@ dependencies = [
     { name = "importlib-resources" },
     { name = "pydantic" },
     { name = "pydantic-settings", extra = ["toml"] },
-    { name = "rich" },
     { name = "sqlalchemy" },
-    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -119,11 +117,9 @@ requires-dist = [
     { name = "pydantic-settings", extras = ["toml"], specifier = ">=2.8.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
-    { name = "rich", specifier = ">=13.9.4" },
     { name = "rich", marker = "extra == 'cli'", specifier = ">=13.9.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.9" },
     { name = "sqlalchemy", specifier = ">=2.0.38" },
-    { name = "typer", specifier = ">=0.15.2" },
     { name = "typer", marker = "extra == 'cli'", specifier = ">=0.15.2" },
 ]
 provides-extras = ["cli", "dev"]
