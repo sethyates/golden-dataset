@@ -44,9 +44,19 @@ jobs:
         run: uv run mypy src tests
 
       - name: 🧪 Test with pytest
-        run: uv run pytest --cov-branch --cov-report=xml --cov=golden_dataset
+        run: uv run pytest --cov=golden_dataset --junitxml=junit.xml -o junit_family=legacy
 
-      - name: 📊 Upload coverage reports to Codecov
+      - name: 📊 Coverage Test with pytest
+        run: uv run pytest --cov=golden_dataset --cov-branch --cov-report=xml
+
+      - name: 📋 Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 📈 Upload coverage reports to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

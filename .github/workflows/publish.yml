@@ -16,6 +16,13 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔧 Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.5"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: 🔢 Update version in pyproject.toml
         run: |
           # Extract version from the tag (remove 'v' prefix if present)
