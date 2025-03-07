@@ -14,8 +14,7 @@ from typing import Any, TypedDict, TypeVar, get_type_hints
 
 from sqlalchemy import Engine
 from sqlalchemy import inspect as sqlalchemy_inspect
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import Query, Session, sessionmaker
+from sqlalchemy.orm import DeclarativeMeta, Query, Session, sessionmaker
 
 from .exc import EntityImportError, GoldenError, ModelNotFoundError
 
@@ -244,12 +243,12 @@ def get_sqlalchemy_base(
 
     # First try finding the base class directly
     base = find_class_by_name(base_class_name, search_path, package)
-    if base:
+    if base is not None:
         return base  # type: ignore
 
     # Then try finding SQLModel which is common in newer projects
     base = find_class_by_name("SQLModel", search_path, package)
-    if base:
+    if base is not None:
         return base  # type: ignore
 
     logger.warning(f"Could not find SQLAlchemy Base class '{base_class_name}' in any of the search paths")
@@ -578,6 +577,7 @@ def bulk_import(
 
     if not models:
         logger.warning("No model classes found for bulk import")
+        return success_counts
 
     # Use SQLAlchemy's table ordering to handle dependencies correctly
     for table in base.metadata.sorted_tables:

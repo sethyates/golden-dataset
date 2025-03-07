@@ -1,15 +1,11 @@
-name: Publish to PyPI
+name: 📢 Publish
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [ main ]
-#  release:
-#    types: [published]
+  release:
+    types: [published]
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
@@ -17,49 +13,33 @@ jobs:
     runs-on: ubuntu-24.04
     environment: pypi
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: Release
-        uses: cycjimmy/semantic-release-action@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: 🔢 Update version in pyproject.toml
+        run: |
+          # Extract version from the tag (remove 'v' prefix if present)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Updating version to: $VERSION"
+          
+          # Update version in pyproject.toml using sed
+          sed -i "s/^version[^=]*=[^"]*\".*\"/version = \"$VERSION\"/" pyproject.toml
+          
+          # Verify the update
+          grep "version = " pyproject.toml
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "0.6.5"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: "Set up Python"
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
 
-      - name: Install the project
+      - name: 📦 Install the project
         run: uv sync --all-extras --dev
 
-      - name: Build package
+      - name: 🏗️ Build package
         run: uv build
 
-      - name: Install the project
-        run: uv sync --all-extras --dev
-
-      - name: Lint check with Ruff
-        run: uv run ruff check
-
-      - name: Format check with Ruff
-        run: uv run ruff format --check
-
-      - name: Type check with mypy
-        run: uv run mypy src tests
-
-      - name: Test with pytest
-        run: uv run pytest --cov=golden_dataset
-
-      - name: Publish package
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: 🚀 Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
 
 concurrency:

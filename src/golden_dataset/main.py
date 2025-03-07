@@ -21,8 +21,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 from sqlalchemy import exc
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 from .core import bulk_delete, bulk_import, get_function, is_same_class
 from .exc import DatasetNotFoundError, GoldenError

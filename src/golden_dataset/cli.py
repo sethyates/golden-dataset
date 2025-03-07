@@ -10,9 +10,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from golden_dataset.core import get_sqlalchemy_base, get_sqlalchemy_engine, get_sqlalchemy_session_factory, sum_dicts
-from golden_dataset.exc import GoldenError
-from golden_dataset.main import GoldenManager, GoldenSettings
+from .core import get_sqlalchemy_base, get_sqlalchemy_engine, get_sqlalchemy_session_factory, sum_dicts
+from .exc import GoldenError
+from .main import GoldenManager, GoldenSettings
 
 app = typer.Typer(help="Golden dataset management")
 console = Console()

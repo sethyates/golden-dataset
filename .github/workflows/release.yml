@@ -1,0 +1,61 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.5"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: 📦 Install the project
+        run: uv sync --all-extras --dev
+
+      - name: 🏗️ Build package
+        run: uv build
+
+      - name: 🧹 Lint check with Ruff
+        run: uv run ruff check
+
+      - name: ✨ Format check with Ruff
+        run: uv run ruff format --check
+
+      - name: 🔍 Type check with mypy
+        run: uv run mypy src tests
+
+      - name: 🧪 Test with pytest
+        run: uv run pytest --cov-branch --cov-report=xml --cov=golden_dataset
+
+      - name: 📊 Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: 🏷️ Release
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
