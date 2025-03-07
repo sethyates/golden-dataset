@@ -49,7 +49,7 @@ def sample_dataset(test_settings):
         name="test_dataset",
         title="Test Dataset",
         description="A sample dataset for testing",
-        tables={"users": 2, "posts": 3}
+        tables={"users": 2, "posts": 3},
     )
 
     # Create dataset directory and files
@@ -64,18 +64,30 @@ def sample_dataset(test_settings):
     # Create table files
     users_file = dataset_dir / "users.json"
     with open(users_file, "w") as f:
-        json.dump({"data": [
-            {"id": 1, "name": "User 1", "email": "user1@example.com"},
-            {"id": 2, "name": "User 2", "email": "user2@example.com"}
-        ]}, f, indent=2)
+        json.dump(
+            {
+                "data": [
+                    {"id": 1, "name": "User 1", "email": "user1@example.com"},
+                    {"id": 2, "name": "User 2", "email": "user2@example.com"},
+                ]
+            },
+            f,
+            indent=2,
+        )
 
     posts_file = dataset_dir / "posts.json"
     with open(posts_file, "w") as f:
-        json.dump({"data": [
-            {"id": 1, "user_id": 1, "title": "Post 1", "content": "Content 1"},
-            {"id": 2, "user_id": 1, "title": "Post 2", "content": "Content 2"},
-            {"id": 3, "user_id": 2, "title": "Post 3", "content": "Content 3"}
-        ]}, f, indent=2)
+        json.dump(
+            {
+                "data": [
+                    {"id": 1, "user_id": 1, "title": "Post 1", "content": "Content 1"},
+                    {"id": 2, "user_id": 1, "title": "Post 2", "content": "Content 2"},
+                    {"id": 3, "user_id": 2, "title": "Post 3", "content": "Content 3"},
+                ]
+            },
+            f,
+            indent=2,
+        )
 
     return dataset
 
@@ -87,7 +99,7 @@ def dependency_dataset(test_settings):
         name="dependency_dataset",
         title="Dependency Dataset",
         description="A dependency dataset",
-        tables={"categories": 1}
+        tables={"categories": 1},
     )
 
     # Create dataset directory and files
@@ -102,9 +114,7 @@ def dependency_dataset(test_settings):
     # Create table file
     categories_file = dataset_dir / "categories.json"
     with open(categories_file, "w") as f:
-        json.dump({"data": [
-            {"id": 1, "name": "Category 1"}
-        ]}, f, indent=2)
+        json.dump({"data": [{"id": 1, "name": "Category 1"}]}, f, indent=2)
 
     return dataset
 
@@ -117,7 +127,7 @@ def complex_dataset(test_settings, dependency_dataset):
         title="Complex Dataset",
         description="A dataset with dependencies",
         dependencies=[dependency_dataset.name],
-        tables={"articles": 2}
+        tables={"articles": 2},
     )
 
     # Create dataset directory and files
@@ -132,10 +142,16 @@ def complex_dataset(test_settings, dependency_dataset):
     # Create table file
     articles_file = dataset_dir / "articles.json"
     with open(articles_file, "w") as f:
-        json.dump({"data": [
-            {"id": 1, "category_id": 1, "title": "Article 1", "content": "Content 1"},
-            {"id": 2, "category_id": 1, "title": "Article 2", "content": "Content 2"}
-        ]}, f, indent=2)
+        json.dump(
+            {
+                "data": [
+                    {"id": 1, "category_id": 1, "title": "Article 1", "content": "Content 1"},
+                    {"id": 2, "category_id": 1, "title": "Article 2", "content": "Content 2"},
+                ]
+            },
+            f,
+            indent=2,
+        )
 
     return dataset
 
@@ -143,9 +159,11 @@ def complex_dataset(test_settings, dependency_dataset):
 @pytest.fixture
 def mock_sqlalchemy_components():
     """Mock SQLAlchemy components for testing."""
-    with mock.patch.object(golden_dataset.cli, "get_sqlalchemy_engine") as mock_engine, \
-            mock.patch.object(golden_dataset.cli, "get_sqlalchemy_base") as mock_base, \
-            mock.patch.object(golden_dataset.cli, "get_sqlalchemy_session_factory") as mock_session:
+    with (
+        mock.patch.object(golden_dataset.cli, "get_sqlalchemy_engine") as mock_engine,
+        mock.patch.object(golden_dataset.cli, "get_sqlalchemy_base") as mock_base,
+        mock.patch.object(golden_dataset.cli, "get_sqlalchemy_session_factory") as mock_session,
+    ):
         # Create mock session
         mock_session_instance = mock.MagicMock()
         mock_session.return_value = mock.MagicMock(return_value=mock_session_instance)
@@ -161,17 +179,14 @@ def mock_sqlalchemy_components():
             "engine": mock_engine,
             "base": mock_base,
             "session_factory": mock_session,
-            "session": mock_session_instance
+            "session": mock_session_instance,
         }
 
 
 # Test the main callback
 def test_main_callback(cli_runner, test_settings):
     """Test the main callback function."""
-    result = cli_runner.invoke(
-        golden_dataset.cli.app,
-        []
-    )
+    result = cli_runner.invoke(golden_dataset.cli.app, [])
     assert result.exit_code == 2
 
 
@@ -184,11 +199,7 @@ def test_list_datasets_success(cli_runner, test_settings, sample_dataset):
         mock_manager_cls.return_value = mock_manager
         mock_manager.list_datasets.return_value = [sample_dataset]
 
-        result = cli_runner.invoke(
-            golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "list"]
-        )
+        result = cli_runner.invoke(golden_dataset.cli.app, ["--datasets-dir", str(test_settings.datasets_dir), "list"])
 
         assert result.exit_code == 0
         assert "Golden Datasets" in result.stdout
@@ -207,11 +218,7 @@ def test_list_datasets_empty(cli_runner, test_settings):
         mock_manager_cls.return_value = mock_manager
         mock_manager.list_datasets.return_value = []
 
-        result = cli_runner.invoke(
-            golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "list"]
-        )
+        result = cli_runner.invoke(golden_dataset.cli.app, ["--datasets-dir", str(test_settings.datasets_dir), "list"])
 
         assert result.exit_code == 0
         assert "No datasets found" in result.stdout
@@ -225,11 +232,7 @@ def test_list_datasets_error(cli_runner, test_settings):
         mock_manager_cls.return_value = mock_manager
         mock_manager.list_datasets.side_effect = GoldenError("Test error")
 
-        result = cli_runner.invoke(
-            golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "list"]
-        )
+        result = cli_runner.invoke(golden_dataset.cli.app, ["--datasets-dir", str(test_settings.datasets_dir), "list"])
 
         assert result.exit_code == 1
 
@@ -244,9 +247,7 @@ def test_show_dataset_success(cli_runner, test_settings, sample_dataset):
         mock_manager.open_dataset.return_value = sample_dataset
 
         result = cli_runner.invoke(
-            golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "show", sample_dataset.name]
+            golden_dataset.cli.app, ["--datasets-dir", str(test_settings.datasets_dir), "show", sample_dataset.name]
         )
 
         assert result.exit_code == 0
@@ -268,9 +269,7 @@ def test_show_dataset_not_found(cli_runner, test_settings):
         mock_manager.open_dataset.side_effect = DatasetNotFoundError("nonexistent", Path("/path"))
 
         result = cli_runner.invoke(
-            golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "show", "nonexistent"]
+            golden_dataset.cli.app, ["--datasets-dir", str(test_settings.datasets_dir), "show", "nonexistent"]
         )
 
         assert result.exit_code == 1
@@ -294,9 +293,14 @@ def test_generate_dataset_success(cli_runner, test_settings):
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "generate", "test_generators.test_generator:sample_generator"]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "generate",
+                "test_generators.test_generator:sample_generator",
+            ],
         )
 
         assert result.exit_code == 0
@@ -319,8 +323,7 @@ def test_generate_dataset_error(cli_runner, test_settings):
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "generate", "nonexistent_module:nonexistent_generator"]
+            ["--datasets-dir", str(test_settings.datasets_dir), "generate", "nonexistent_module:nonexistent_generator"],
         )
 
         assert result.exit_code == 1
@@ -332,9 +335,10 @@ def test_load_dataset_success(cli_runner, test_settings, sample_dataset, mock_sq
     """Test loading a dataset successfully."""
     mocks = mock_sqlalchemy_components
 
-    with mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls, \
-            mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load:
-
+    with (
+        mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls,
+        mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load,
+    ):
         # Mock manager instance
         mock_manager = mock.MagicMock()
         mock_manager_cls.return_value = mock_manager
@@ -344,9 +348,14 @@ def test_load_dataset_success(cli_runner, test_settings, sample_dataset, mock_sq
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "load", sample_dataset.name]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "load",
+                sample_dataset.name,
+            ],
         )
 
         assert result.exit_code == 0
@@ -371,9 +380,10 @@ def test_load_dataset_with_no_depends(cli_runner, test_settings, sample_dataset,
     """Test loading a dataset without dependencies."""
     mocks = mock_sqlalchemy_components
 
-    with mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls, \
-            mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load:
-
+    with (
+        mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls,
+        mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load,
+    ):
         # Mock manager instance
         mock_manager = mock.MagicMock()
         mock_manager_cls.return_value = mock_manager
@@ -383,9 +393,15 @@ def test_load_dataset_with_no_depends(cli_runner, test_settings, sample_dataset,
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "load", sample_dataset.name, "--no-depends"]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "load",
+                sample_dataset.name,
+                "--no-depends",
+            ],
         )
 
         assert result.exit_code == 0
@@ -401,9 +417,10 @@ def test_load_dataset_with_no_depends(cli_runner, test_settings, sample_dataset,
 
 def test_load_dataset_error(cli_runner, test_settings, mock_sqlalchemy_components):
     """Test loading a dataset with an error."""
-    with mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls, \
-            mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load:
-
+    with (
+        mock.patch.object(golden_dataset.cli, "GoldenManager") as mock_manager_cls,
+        mock.patch.object(golden_dataset.cli, "recursively_load_datasets") as mock_load,
+    ):
         # Mock manager instance
         mock_manager = mock.MagicMock()
         mock_manager_cls.return_value = mock_manager
@@ -413,9 +430,14 @@ def test_load_dataset_error(cli_runner, test_settings, mock_sqlalchemy_component
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "load", "dataset_name"]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "load",
+                "dataset_name",
+            ],
         )
 
         assert result.exit_code == 1
@@ -426,10 +448,7 @@ def test_load_dataset_missing_engine(cli_runner, test_settings, mock_sqlalchemy_
     """Test loading a dataset when engine cannot be found."""
     mock_sqlalchemy_components["engine"].return_value = None
 
-    result = cli_runner.invoke(
-        golden_dataset.cli.app,
-        ["load", "dataset_name"]
-    )
+    result = cli_runner.invoke(golden_dataset.cli.app, ["load", "dataset_name"])
 
     assert result.exit_code == 0
     assert "Could not find engine" in result.stdout
@@ -442,9 +461,14 @@ def test_load_dataset_missing_base(cli_runner, test_settings, mock_sqlalchemy_co
 
     result = cli_runner.invoke(
         golden_dataset.cli.app,
-        ["--datasets-dir", str(test_settings.datasets_dir),
-         "--src-dir", str(test_settings.src_dir),
-         "load", "dataset_name"]
+        [
+            "--datasets-dir",
+            str(test_settings.datasets_dir),
+            "--src-dir",
+            str(test_settings.src_dir),
+            "load",
+            "dataset_name",
+        ],
     )
 
     assert result.exit_code == 0
@@ -457,10 +481,7 @@ def test_load_dataset_missing_session(cli_runner, test_settings, mock_sqlalchemy
     mock_sqlalchemy_components["base"].return_value = mock.MagicMock()
     mock_sqlalchemy_components["session_factory"].return_value = None
 
-    result = cli_runner.invoke(
-        golden_dataset.cli.app,
-        ["load", "dataset_name"]
-    )
+    result = cli_runner.invoke(golden_dataset.cli.app, ["load", "dataset_name"])
 
     assert result.exit_code == 0
     assert "Could not find Session" in result.stdout
@@ -483,9 +504,14 @@ def test_unload_dataset_success(cli_runner, test_settings, sample_dataset, mock_
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "unload", sample_dataset.name]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "unload",
+                sample_dataset.name,
+            ],
         )
 
         assert result.exit_code == 0
@@ -500,8 +526,7 @@ def test_unload_dataset_success(cli_runner, test_settings, sample_dataset, mock_
         # Verify dataset was loaded and removed
         mock_manager.load_dataset.assert_called_once_with(sample_dataset.name)
         mock_dataset.remove_from_session.assert_called_once_with(
-            mocks["base"].return_value,
-            mocks["session_factory"].return_value.return_value
+            mocks["base"].return_value, mocks["session_factory"].return_value.return_value
         )
 
 
@@ -515,9 +540,14 @@ def test_unload_dataset_error(cli_runner, test_settings, mock_sqlalchemy_compone
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "unload", "dataset_name"]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "unload",
+                "dataset_name",
+            ],
         )
 
         assert result.exit_code == 1
@@ -544,9 +574,14 @@ def test_unload_dataset_session_error(cli_runner, test_settings, sample_dataset,
 
         result = cli_runner.invoke(
             golden_dataset.cli.app,
-            ["--datasets-dir", str(test_settings.datasets_dir),
-             "--src-dir", str(test_settings.src_dir),
-             "unload", sample_dataset.name]
+            [
+                "--datasets-dir",
+                str(test_settings.datasets_dir),
+                "--src-dir",
+                str(test_settings.src_dir),
+                "unload",
+                sample_dataset.name,
+            ],
         )
 
         assert result.exit_code == 1
