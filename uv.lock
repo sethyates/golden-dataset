@@ -92,7 +92,10 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-sugar" },
+    { name = "rich" },
     { name = "ruff" },
+    { name = "typer" },
 ]
 
 [package.dev-dependencies]
@@ -106,6 +109,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-sugar" },
     { name = "ruff" },
+    { name = "typer" },
 ]
 
 [package.metadata]
@@ -117,10 +121,13 @@ requires-dist = [
     { name = "pydantic-settings", extras = ["toml"], specifier = ">=2.8.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "pytest-sugar", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "rich", marker = "extra == 'cli'", specifier = ">=13.9.4" },
+    { name = "rich", marker = "extra == 'dev'", specifier = ">=13.9.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.9" },
     { name = "sqlalchemy", specifier = ">=2.0.38" },
     { name = "typer", marker = "extra == 'cli'", specifier = ">=0.15.2" },
+    { name = "typer", marker = "extra == 'dev'", specifier = ">=0.15.2" },
 ]
 provides-extras = ["cli", "dev"]
 
@@ -135,6 +142,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "pytest-sugar", specifier = ">=1.0.0" },
     { name = "ruff", specifier = ">=0.9.9" },
+    { name = "typer", specifier = ">=0.15.2" },
 ]
 
 [[package]]

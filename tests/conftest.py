@@ -2,9 +2,20 @@
 Pytest configuration for golden-dataset tests.
 """
 
+import asyncio
 import pytest
+from typing import Generator
 
 from golden_dataset import GoldenSession
+
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)  # Set this as the current event loop
+    yield loop
+    loop.close()
 
 
 @pytest.fixture

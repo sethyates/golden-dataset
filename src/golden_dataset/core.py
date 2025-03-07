@@ -12,9 +12,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypedDict, TypeVar, get_type_hints
 
-from sqlalchemy import Engine
-from sqlalchemy import inspect as sqlalchemy_inspect
+from sqlalchemy import Engine, inspect as sqlalchemy_inspect
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, async_sessionmaker
 
 from .exc import EntityImportError, GoldenError, ModelNotFoundError
 
@@ -22,7 +22,6 @@ from .exc import EntityImportError, GoldenError, ModelNotFoundError
 logger = logging.getLogger(__name__)
 
 
-T = TypeVar("T")  # Generic type for return values
 ModelType = TypeVar("ModelType")  # Type for SQLAlchemy models
 
 
@@ -290,17 +289,77 @@ def get_sqlalchemy_engine(
 
     engine = find_class_by_name(engine_name, search_path, package)
     if engine:
+        if hasattr(engine, "sync_engine"):
+            return engine.sync_engine  # type: ignore
         return engine  # type: ignore
 
     logger.warning(f"Could not find SQLAlchemy engine '{engine_name}' in any of the search paths")
     return None
 
 
+T = TypeVar('T', bound=Session)
+
+from typing import ContextManager, Generator
+from contextlib import contextmanager
+
+
+@contextmanager
+def sync_session_from_async(async_session: AsyncSession) -> Generator[Session, None, None]:
+    """
+    Creates a sync session from an async session and ensures proper cleanup.
+    """
+    sync_session = async_session.sync_session
+    try:
+        yield sync_session
+    finally:
+        # We don't need to close the sync_session directly
+        # as it's just a view of the async session
+        # The async session will be closed after this context manager exits
+        pass
+
+
+def get_sync_session_factory(factory: sessionmaker[Any] | async_sessionmaker[Any]) -> Callable[..., ContextManager[Session]]:
+    """
+    Takes either a sync or async sessionmaker and returns a factory function
+    that produces a context manager for sync sessions.
+
+    Args:
+        factory: Either a sessionmaker or async_sessionmaker
+
+    Returns:
+        A callable that creates a context manager for sync sessions
+    """
+
+    if isinstance(factory, async_sessionmaker):
+        @contextmanager
+        def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
+            async_session = factory(**kwargs)
+            try:
+                with sync_session_from_async(async_session) as session:
+                    yield session
+            finally:
+                # Close the async session explicitly
+                # This can't be done asynchronously here, but that's ok
+                # for our use case since we don't need to wait for it
+                async_session.close()
+        return sync_factory
+    else:
+        # For sync sessions, just return a context manager that closes properly
+        @contextmanager
+        def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
+            session = factory(**kwargs)
+            try:
+                yield session
+            finally:
+                session.close()
+        return sync_factory
+
+
 def get_sqlalchemy_session_factory(
     session_factory_name: str = "Session",
     search_path: list[str] | None = None,
     package: str | None = None,
-) -> Callable[[], Session] | None:
+) -> Callable[[], ContextManager[Session]] | None:
     """
     Find the SQLAlchemy session factory in the project.
 
@@ -332,10 +391,10 @@ def get_sqlalchemy_session_factory(
             logger.debug(f"Searching for session factory in {module_name}")
             module = importlib.import_module(f".{module_name}", package=package)
             if hasattr(module, session_factory_name):
-                session = getattr(module, session_factory_name)
-                if callable(session):
+                factory = getattr(module, session_factory_name)
+                if callable(factory):
                     logger.debug(f"Found SQLAlchemy session factory in {module_name}")
-                    return session  # type: ignore
+                    return get_sync_session_factory(factory)  # type: ignore
 
     # If we couldn't find a Session, create a basic one from the engine
     logger.info(f"Could not find SQLAlchemy session factory '{session_factory_name}'. Attempting to create one.")
@@ -344,7 +403,7 @@ def get_sqlalchemy_session_factory(
     if engine:
         logger.info("Created session factory from engine")
         factory = sessionmaker(bind=engine)
-        return factory
+        return get_sync_session_factory(factory)
 
     logger.warning("Could not create a session factory - no engine found")
     return None
@@ -624,7 +683,10 @@ def bulk_import(
     return success_counts
 
 
-def get_model_class[T](model_name: str, search_paths: list[str], package: str | None = None) -> type[T] | None:
+M = TypeVar('M', bound=Session)
+
+
+def get_model_class[M](model_name: str, search_paths: list[str], package: str | None = None) -> type[M] | None:
     """
     Find a model class by name in a list of search paths.
 
