@@ -23,20 +23,8 @@ Golden datasets are curated samples of data used for testing, development, and d
 # Basic installation
 pip install golden-dataset
 
-# With SQLModel support
-pip install golden-dataset[sqlmodel]
-
-# With SQLAlchemy support
-pip install golden-dataset[sqlalchemy]
-
 # With CLI support
 pip install golden-dataset[cli]
-
-# With async support
-pip install golden-dataset[async]
-
-# With all optional dependencies
-pip install golden-dataset[all]
 ```
 
 ### From source
@@ -46,13 +34,11 @@ pip install golden-dataset[all]
 uv pip install .
 
 # With specific optional dependencies
-uv pip install ".[sqlmodel]"
-uv pip install ".[sqlalchemy]"
-uv pip install ".[all]"
+uv pip install ".[cli]"
 
 # Or using pip
 pip install .
-pip install ".[sqlmodel]"
+pip install ".[cli]"
 ```
 
 ## Usage
@@ -66,11 +52,11 @@ from myapp.models import EventType
 
 @golden
 def base(session):
-    event_type1 = EventType.model_validate({"id": 0, "name": "Purchase"})
-    event_type2 = EventType.model_validate({"id": 1, "name": "Landing page"})
-    event_type3 = EventType.model_validate({"id": 2, "name": "Sign-Up"})
-    event_type4 = EventType.model_validate({"id": 3, "name": "Lead"})
-    event_type5 = EventType.model_validate({"id": 99, "name": "Other"})
+    event_type1 = EventType(id=0, name="Purchase")
+    event_type2 = EventType(id=1, name="Landing page")
+    event_type3 = EventType(id=2, name="Sign-Up")
+    event_type4 = EventType(id=3, name="Lead")
+    event_type5 = EventType(id=99, name="Other")
     session.add(event_type1)
     session.add(event_type2)
     session.add(event_type3)
@@ -85,24 +71,27 @@ def base(session):
 from golden_dataset import golden
 from myapp.models import Brand, Font, Brandkit
 
-@golden(dependencies=["base"])
+# without a decorator:
+# def bloom_organics(session, base):
+
+@golden(title="Bloom Organics", dependencies=["base"])
 def bloom_organics(session):
-    brand = Brand.model_validate({
-        "code": "bloom_organics",
-        "name": "Bloom Organics",
-        "description": "Clean, plant-based skincare formulated with certified organic ingredients.",
+    brand = Brand(
+        code="bloom_organics",
+        name="Bloom Organics",
+        description="Clean, plant-based skincare formulated with certified organic ingredients.",
         # ... more fields
-    })
+    )
     session.add(brand)
     session.refresh(brand)
     
-    font1 = Font.model_validate({
-        "brand_id": brand.id,
-        "font_family": "Cormorant Garamond",
-        "font_weight": 500,
-        "font_style": "normal",
-        "source": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&display=swap"
-    })
+    font1 = Font(
+        brand_id=brand.id,
+        font_family="Cormorant Garamond",
+        font_weight=500,
+        font_style="normal",
+        source="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&display=swap"
+    )
     session.add(font1)
     # ... add more objects
 ```
@@ -110,40 +99,50 @@ def bloom_organics(session):
 ### Generating datasets programmatically
 
 ```python
-from golden_dataset import generate_dataset
+from golden_dataset import GoldenManager
 
 # Generate a dataset and its dependencies
-dataset = generate_dataset("bloom_organics_dataset:bloom_organics", "output_dir")
+manager = GoldenManager()
+dataset = manager.generate_dataset("bloom_organics_dataset:bloom_organics")
+manager.dump_dataset(dataset)
 ```
 
 ### Loading datasets into a database
 
 ```python
-from golden_dataset import load_dataset
-from sqlmodel import Session, create_engine
+from golden_dataset import GoldenManager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models import Base
 
 # Create a database engine
 engine = create_engine("sqlite:///app.db")
 
-# Define a session factory
-def session_factory():
-    return Session(engine)
+session_factory = sessionmaker(bind=engine)
 
 # Load the dataset
-load_dataset("output_dir/bloom_organics", session_factory)
+with session_factory() as session:
+    manager = GoldenManager()
+    manager.load_dataset("bloom_organics", Base, session, recurse=False)
 ```
 
 ### Using the CLI
 
 ```bash
-# Generate a dataset
-golden-dataset generate "bloom_organics_dataset:bloom_organics" --output-dir datasets
-
 # List available datasets
-golden-dataset list-datasets --datasets-dir datasets
+golden-dataset list
 
-# Import a dataset (demo only)
-golden-dataset import-dataset bloom_organics --datasets-dir datasets
+# Generate a dataset
+golden-dataset generate "bloom_organics_dataset:bloom_organics"
+
+# Show a dataset details
+golden-dataset show bloom_organics
+
+# Import a dataset
+golden-dataset load bloom_organics
+
+# Delete a dataset from the database
+golden-dataset unload bloom_organics
 ```
 
 ## Development
@@ -156,167 +155,38 @@ uv venv
 uv sync --all --dev
 
 # Or using pip (traditional approach)
-pip install -e ".[dev,all]"
+pip install -e ".[dev]"
 ```
 
 ### Code formatting and linting
 
 ```bash
 # Format code with Ruff
-ruff format src tests
+uv run ruff format src tests
 
 # Run Ruff linter
-ruff check src tests
+uv run ruff check src tests
 
 # Auto-fix issues where possible
-ruff check --fix src tests
+uv run ruff check --fix src tests
 ```
 
 ### Running tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
 ### Running with code coverage
 
 ```bash
-pytest --cov=golden_dataset
+uv run pytest --cov=golden_dataset
 ```
 
 ### Type checking
 
 ```bash
-mypy src
-```
-
-## License
-
-MIT
-Dataset for testing" --version "1.0.0"
-```
-
-Add a record to a dataset:
-
-```bash
-golden-dataset add-record 1 content.json --metadata-file metadata.json
-```
-
-List all datasets:
-
-```bash
-golden-dataset list-datasets
-```
-
-Export a dataset to JSON:
-
-```bash
-golden-dataset export-dataset 1 dataset_export.json
-```
-
-### Python API
-
-```python
-from golden_dataset.database import Database
-from golden_dataset.models import Dataset, Record
-
-# Initialize the database
-db = Database("sqlite:///golden.db")
-db.create_tables()
-
-# Create a new dataset
-dataset = Dataset(
-    name="My Test Dataset",
-    description="A dataset for testing",
-    version="1.0.0",
-    metadata={"source": "manual", "category": "test"}
-)
-db.add(dataset)
-
-# Add a record to the dataset
-record = Record(
-    content={"key": "value", "test": True, "count": 42},
-    metadata={"quality": "high"},
-    dataset_id=dataset.id
-)
-db.add(record)
-
-# Query datasets
-test_datasets = db.query(Dataset, name="My Test Dataset")
-for dataset in test_datasets:
-    print(f"Dataset: {dataset.name} (version {dataset.version})")
-    print(f"Records: {len(dataset.records)}")
-```
-
-## Publishing to PyPI or a Private Registry
-
-### Setting up for publishing
-
-1. Create a PyPI account if publishing to the public PyPI
-2. Generate an API token for the registry
-3. Set up GitHub Actions for automated publishing (see `.github/workflows/publish.yml`)
-
-### Publishing with uv
-
-Using [uv](https://github.com/astral-sh/uv) for publishing:
-
-```bash
-# Build the package
-uv build
-
-# Publish to PyPI
-uv publish
-
-# Publish to a private registry
-uv publish --repository-url https://your-private-registry/simple
-```
-
-### Publishing with twine
-
-Alternatively, you can use twine:
-
-```bash
-# Build the package
-python -m build
-
-# Publish to PyPI
-twine upload dist/*
-
-# Publish to a private registry
-twine upload --repository-url https://your-private-registry/simple dist/*
-```
-
-## Development
-
-### Running tests
-
-```bash
-pytest
-```
-
-### Running with code coverage
-
-```bash
-pytest --cov=golden_dataset
-```
-
-### Code formatting and linting
-
-```bash
-# Format code with Ruff
-ruff format src tests
-
-# Run Ruff linter
-ruff check src tests
-
-# Auto-fix issues where possible
-ruff check --fix src tests
-```
-
-### Type checking
-
-```bash
-mypy src
+uv run mypy src
 ```
 
 ## License
