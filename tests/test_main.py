@@ -29,13 +29,17 @@ def test_settings(temp_dir):
     settings = GoldenSettings()
     settings.datasets_dir = str(datasets_dir)
     settings.src_dir = str(src_dir)
-    settings.generators = "fixtures"
+    settings.generators = "tests.fixtures"
+    settings.base_class_name = "test_module_models:Base"
+    settings.engine_name = "test_module_engine:engine"
+    settings.session_factory_name = "test_module_engine:Session"
     return settings
 
 
 @pytest.fixture
 def test_manager(test_settings):
     """Create a test golden manager."""
+    print(test_settings)
     return GoldenManager(settings=test_settings)
 
 
@@ -401,7 +405,7 @@ def test_golden_manager_initialization(test_settings):
 
     assert manager.datasets_dir == Path(test_settings.datasets_dir)
     assert manager.src_dir == Path(test_settings.src_dir)
-    assert manager.generators == "fixtures"
+    assert manager.generators == "tests.fixtures"
 
 
 def test_golden_manager_dataset():
