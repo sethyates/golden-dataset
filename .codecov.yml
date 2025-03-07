@@ -1,0 +1,40 @@
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...80"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        base: auto
+        paths:
+          - "src"
+        branches:
+          - main
+        if_ci_failed: error
+        informational: false
+        only_pulls: false
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        base: auto
+        if_ci_failed: error
+        only_pulls: true
+
+comment:
+  layout: "reach,diff,flags,tree,betaprofiling"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  after_n_builds: 1
+
+ignore:
+  - "tests/**/*"
