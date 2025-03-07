@@ -139,7 +139,7 @@ def show_dataset(
 @app.command("generate")
 def generate_dataset(
     dataset_name: str = typer.Argument(..., help="Name of the dataset to generate"),
-    generators_dir: str = typer.Option(settings.generators_dir, help="Directory containing generators"),
+    generators: str = typer.Option(settings.generators, help="Module containing generators"),
     base_class_name: str = typer.Option(settings.base_class_name, help="Base class name"),
     engine_name: str = typer.Option(settings.engine_name, help="Engine instance name"),
     session_factory_name: str = typer.Option(settings.session_factory_name, help="Session factory name"),
@@ -153,7 +153,7 @@ def generate_dataset(
         console.rule()
         console.print(f"Generating dataset from [bold]{dataset_name}[/bold]...")
 
-        settings.generators_dir = generators_dir
+        settings.generators = generators
         settings.base_class_name = base_class_name
         settings.engine_name = engine_name
         settings.session_factory_name = session_factory_name

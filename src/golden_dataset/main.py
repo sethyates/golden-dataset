@@ -31,9 +31,9 @@ from .exc import DatasetNotFoundError, GoldenError
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_DATA_DIR = "tests/data/golden"
-DEFAULT_GENERATOR_DIR = "src/data/golden"
 DEFAULT_SRC_DIR = "src"
+DEFAULT_DATA_DIR = "tests/data/golden"
+DEFAULT_GENERATOR_MODULE = "golden"
 
 
 T = TypeVar("T")
@@ -45,7 +45,7 @@ class GoldenSettings(BaseSettings):
 
     src_dir: str = Field(default=DEFAULT_SRC_DIR, alias="src")
     datasets_dir: str = Field(default=DEFAULT_DATA_DIR, alias="datasets")
-    generators_dir: str = Field(default=DEFAULT_GENERATOR_DIR, alias="generators")
+    generators: str = Field(default=DEFAULT_GENERATOR_MODULE, alias="generators")
     base_class_name: str = Field(default="Base", alias="base-class")
     engine_name: str = Field(default="engine", alias="engine")
     session_factory_name: str = Field(default="Session", alias="session-factory")
@@ -63,8 +63,8 @@ class GoldenSettings(BaseSettings):
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (PyprojectTomlConfigSettingsSource(settings_cls),)
+    ) -> tuple[PyprojectTomlConfigSettingsSource, PydanticBaseSettingsSource, PydanticBaseSettingsSource]:
+        return (PyprojectTomlConfigSettingsSource(settings_cls), env_settings, dotenv_settings)
 
 
 class TableInfo(TypedDict):
@@ -513,7 +513,7 @@ class GoldenManager:
         default_settings = GoldenSettings()
         self.datasets_dir = Path(settings.datasets_dir or default_settings.datasets_dir)
         self.src_dir = Path(settings.src_dir or default_settings.src_dir or ".")
-        self.generators_dir = Path(settings.generators_dir or default_settings.generators_dir or DEFAULT_SRC_DIR or ".")
+        self.generators = settings.generators or default_settings.generators
 
     def session(self, dataset: GoldenDataset) -> GoldenSession:
         """
@@ -692,7 +692,7 @@ class GoldenManager:
         Raises:
             GoldenError: If the generator function does not have the correct signature
         """
-        func, name, args = get_function(fn, str(self.generators_dir), str(self.src_dir))
+        func, name, args = get_function(fn, str(self.generators), str(self.src_dir))
 
         first_arg = args.pop(0)
         if first_arg["name"] != "session" or not (

@@ -5,6 +5,6 @@ golden-dataset
 A library for creating and managing golden datasets.
 """
 
-from .main import Golden, GoldenDataset, GoldenSession, golden
+from .main import Golden, GoldenDataset, GoldenManager, GoldenSession, GoldenSettings, golden
 
-__all__ = ["golden", "Golden", "GoldenDataset", "GoldenSession"]
+__all__ = ["Golden", "GoldenDataset", "GoldenManager", "GoldenSession", "GoldenSettings", "golden"]

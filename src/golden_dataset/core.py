@@ -133,7 +133,12 @@ def get_function(
 
         try:
             # Import the module
-            module = importlib.import_module(f".{module_path}", package=generator_root)
+            if module_path:
+                module = importlib.import_module(f".{module_path}", package=generator_root)
+            elif generator_root:
+                module = importlib.import_module(generator_root, package=generator_root)
+            else:
+                raise GoldenError("Must specify either a generator root or module path to import")
 
             # Get the function
             if not hasattr(module, func_name):
@@ -326,7 +331,7 @@ def get_sqlalchemy_session_factory(
     for module_name in search_path:
         with contextlib.suppress(ImportError, AttributeError):
             logger.debug(f"Searching for session factory in {module_name}")
-            module = importlib.import_module("." + module_name, package=package)
+            module = importlib.import_module(f".{module_name}", package=package)
             if hasattr(module, session_factory_name):
                 session = getattr(module, session_factory_name)
                 if callable(session):
