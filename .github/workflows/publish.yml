@@ -23,7 +23,7 @@ jobs:
           echo "Updating version to: $VERSION"
           
           # Update version in pyproject.toml using sed
-          sed -i "s/^version[^=]*=[^"]*\".*\"/version = \"$VERSION\"/" pyproject.toml
+          sed -i "s/^version[^=]*=[^\"]*\".*\"/version = \"$VERSION\"/" pyproject.toml
           
           # Verify the update
           grep "version = " pyproject.toml

@@ -53,6 +53,7 @@ jobs:
 
       - name: 🏷️ Release
         uses: cycjimmy/semantic-release-action@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
