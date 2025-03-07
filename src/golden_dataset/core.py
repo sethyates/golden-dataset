@@ -15,7 +15,7 @@ from typing import Any, TypedDict, TypeVar, get_type_hints
 from sqlalchemy import Engine
 from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Query, Session, sessionmaker
 
 from .exc import EntityImportError, GoldenError, ModelNotFoundError
 
@@ -457,9 +457,9 @@ def get_all_subclasses(cls: type) -> list[type]:
 
 
 def bulk_delete(
-        dataset: dict[str, dict[str, dict[str, Any]]],
-        base: DeclarativeMeta,
-        session: Session,
+    dataset: dict[str, dict[str, dict[str, Any]]],
+    base: DeclarativeMeta,
+    session: Session,
 ) -> dict[str, int]:
     """
     Remove all objects in the dataset from a SQLAlchemy session.
@@ -509,7 +509,7 @@ def bulk_delete(
         primary_key_cols = [col.name for col in table.primary_key.columns]
 
         count = 0
-        for entity_id, entity_data in entities.items():
+        for _, entity_data in entities.items():
             # Build a filter condition for each primary key
             filter_conditions = []
             for pk_col in primary_key_cols:
@@ -518,7 +518,7 @@ def bulk_delete(
 
             # If we have valid filter conditions, delete matching entities
             if filter_conditions:
-                query = session.query(model_class).filter(*filter_conditions)
+                query: Query = session.query(model_class).filter(*filter_conditions)
                 to_delete = query.all()
 
                 for obj in to_delete:
@@ -531,10 +531,7 @@ def bulk_delete(
 
 
 def bulk_import(
-    dataset: dict[str, dict[str, dict[str, Any]]],
-    base: DeclarativeMeta,
-    session: Session,
-    fail_on_error: bool = False
+    dataset: dict[str, dict[str, dict[str, Any]]], base: DeclarativeMeta, session: Session, fail_on_error: bool = False
 ) -> dict[str, int]:
     """
     Bulk import entities from a dictionary to SQLAlchemy models and commit to database.
@@ -639,5 +636,5 @@ def get_model_class[T](model_name: str, search_paths: list[str], package: str | 
 
 def sum_dicts(dict1: dict[str, int], dict2: dict[str, int]) -> dict[str, int]:
     from collections import Counter
-    return dict(Counter(dict1) + Counter(dict2))
 
+    return dict(Counter(dict1) + Counter(dict2))

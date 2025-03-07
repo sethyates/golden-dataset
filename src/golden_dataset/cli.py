@@ -2,17 +2,17 @@
 Command-line interface for golden-dataset.
 """
 
-import sys
 import logging
-from typing import Any, Literal
+import sys
+from typing import Any
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from golden_dataset.core import get_sqlalchemy_base, get_sqlalchemy_engine, get_sqlalchemy_session_factory, sum_dicts
+from golden_dataset.exc import GoldenError
 from golden_dataset.main import GoldenManager, GoldenSettings
-from golden_dataset.exc import GoldenError, DatasetNotFoundError
 
 app = typer.Typer(help="Golden dataset management")
 console = Console()
@@ -21,9 +21,9 @@ settings = GoldenSettings()
 
 @app.callback()
 def main(
-        datasets_dir: str = typer.Option(settings.datasets_dir, help="Directory containing datasets"),
-        src_dir: str = typer.Option(settings.src_dir, help="Directory containing source"),
-        loglevel: str | None = typer.Option("WARNING", help="Enable logging at the given log level"),
+    datasets_dir: str = typer.Option(settings.datasets_dir, help="Directory containing datasets"),
+    src_dir: str = typer.Option(settings.src_dir, help="Directory containing source"),
+    loglevel: str | None = typer.Option("WARNING", help="Enable logging at the given log level"),
 ) -> None:
     """
     Generate and manage golden datasets.
@@ -86,6 +86,7 @@ def list_datasets() -> None:
 
         console.print(traceback.format_exc())
         raise typer.Exit(code=1) from e
+
 
 @app.command("show")
 def show_dataset(
@@ -191,7 +192,9 @@ def generate_dataset(
         raise typer.Exit(code=1) from e
 
 
-def recursively_load_datasets(dataset_name: str, base: Any, session: Any, recurse: bool = True, marks: dict[str, bool] | None = None) -> dict[str, int]:
+def recursively_load_datasets(
+    dataset_name: str, base: Any, session: Any, recurse: bool = True, marks: dict[str, bool] | None = None
+) -> dict[str, int]:
     if marks is None:
         marks = dict[str, bool]()
 
@@ -200,16 +203,17 @@ def recursively_load_datasets(dataset_name: str, base: Any, session: Any, recurs
 
     marks[dataset_name] = True
 
-    results: dict[str, int] = {}
+    results: dict[str, int] = dict()
     manager = GoldenManager(settings=settings)
     dataset = manager.load_dataset(dataset_name)
 
     if dataset is not None and recurse:
         for dependency in dataset.dependencies:
-            results = sum_dicts(results, recursively_load_datasets(dependency, base, session, marks))
+            results = sum_dicts(results, recursively_load_datasets(dependency, base, session, marks=marks))
 
     console.print(f"[green]Loading {dataset_name}[/green]")
-    return sum_dicts(results, dataset.add_to_session(base, session))
+    results = sum_dicts(results, dataset.add_to_session(base, session))
+    return results
 
 
 @app.command("load")
