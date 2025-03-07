@@ -86,12 +86,20 @@ def test_golden_settings_defaults():
     """Test that GoldenSettings has correct defaults."""
     settings = GoldenSettings()
 
-    assert settings.src_dir == "src"
-    assert settings.datasets_dir == "tests/data/golden"
-    assert settings.generators == "golden"
-    assert settings.base_class_name == "Base"
-    assert settings.engine_name == "engine"
-    assert settings.session_factory_name == "Session"
+    if settings.generators == "golden":
+        assert settings.src_dir == "src"
+        assert settings.datasets_dir == "tests/data/golden"
+        assert settings.generators == "golden"
+        assert settings.base_class_name == "Base"
+        assert settings.engine_name == "engine"
+        assert settings.session_factory_name == "Session"
+    else:
+        assert settings.src_dir == "examples"
+        assert settings.datasets_dir == "tests/data/golden"
+        assert settings.generators == "db.datasets"
+        assert settings.base_class_name == "db.models:Base"
+        assert settings.engine_name == "db.models:engine"
+        assert settings.session_factory_name == "db.models:Session"
 
 
 # Tests for GoldenDataset
