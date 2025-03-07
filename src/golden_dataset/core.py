@@ -8,13 +8,14 @@ import importlib
 import inspect
 import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any, TypedDict, TypeVar, get_type_hints
 
-from sqlalchemy import Engine, inspect as sqlalchemy_inspect
+from sqlalchemy import Engine
+from sqlalchemy import inspect as sqlalchemy_inspect
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine, async_sessionmaker
 
 from .exc import EntityImportError, GoldenError, ModelNotFoundError
 
@@ -297,13 +298,10 @@ def get_sqlalchemy_engine(
     return None
 
 
-T = TypeVar('T', bound=Session)
-
-from typing import ContextManager, Generator
-from contextlib import contextmanager
+T = TypeVar("T", bound=Session)
 
 
-@contextmanager
+@contextlib.contextmanager
 def sync_session_from_async(async_session: AsyncSession) -> Generator[Session, None, None]:
     """
     Creates a sync session from an async session and ensures proper cleanup.
@@ -318,7 +316,9 @@ def sync_session_from_async(async_session: AsyncSession) -> Generator[Session, N
         pass
 
 
-def get_sync_session_factory(factory: sessionmaker[Any] | async_sessionmaker[Any]) -> Callable[..., ContextManager[Session]]:
+def get_sync_session_factory(
+    factory: sessionmaker[Any] | async_sessionmaker[Any],
+) -> Callable[..., contextlib.AbstractContextManager[Session]]:
     """
     Takes either a sync or async sessionmaker and returns a factory function
     that produces a context manager for sync sessions.
@@ -331,7 +331,8 @@ def get_sync_session_factory(factory: sessionmaker[Any] | async_sessionmaker[Any
     """
 
     if isinstance(factory, async_sessionmaker):
-        @contextmanager
+
+        @contextlib.contextmanager
         def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
             async_session = factory(**kwargs)
             try:
@@ -342,16 +343,18 @@ def get_sync_session_factory(factory: sessionmaker[Any] | async_sessionmaker[Any
                 # This can't be done asynchronously here, but that's ok
                 # for our use case since we don't need to wait for it
                 async_session.close()
+
         return sync_factory
     else:
         # For sync sessions, just return a context manager that closes properly
-        @contextmanager
+        @contextlib.contextmanager
         def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
             session = factory(**kwargs)
             try:
                 yield session
             finally:
                 session.close()
+
         return sync_factory
 
 
@@ -359,7 +362,7 @@ def get_sqlalchemy_session_factory(
     session_factory_name: str = "Session",
     search_path: list[str] | None = None,
     package: str | None = None,
-) -> Callable[[], ContextManager[Session]] | None:
+) -> Callable[[], contextlib.AbstractContextManager[Session]] | None:
     """
     Find the SQLAlchemy session factory in the project.
 
@@ -683,7 +686,7 @@ def bulk_import(
     return success_counts
 
 
-M = TypeVar('M', bound=Session)
+M = TypeVar("M", bound=Session)
 
 
 def get_model_class[M](model_name: str, search_paths: list[str], package: str | None = None) -> type[M] | None:

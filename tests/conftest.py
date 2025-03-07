@@ -3,8 +3,9 @@ Pytest configuration for golden-dataset tests.
 """
 
 import asyncio
+from collections.abc import Generator
+
 import pytest
-from typing import Generator
 
 from golden_dataset import GoldenSession
 
