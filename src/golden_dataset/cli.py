@@ -62,6 +62,7 @@ def list_datasets() -> None:
         for metadata in datasets:
             total_records = sum(metadata.tables.values())
             table_count = len(metadata.tables)
+            exported_at = metadata.exported_at.isoformat() if metadata.exported_at else "N/A"
 
             table.add_row(
                 metadata.name,
@@ -69,7 +70,7 @@ def list_datasets() -> None:
                 str(table_count),
                 str(total_records),
                 ", ".join(metadata.dependencies),
-                metadata.exported_at.isoformat(),
+                exported_at,
             )
 
         console.print(table)
@@ -107,13 +108,14 @@ def show_dataset(
         table.add_column("Description", style="white")
         table.add_column("Dependencies", style="green")
         table.add_column("Exported At", style="yellow")
+        exported_at = metadata.exported_at.isoformat() if metadata.exported_at else "N/A"
         table.add_row(
             dataset.name,
             dataset.title,
             dataset.revision,
             dataset.description,
             ", ".join(dataset.dependencies),
-            dataset.exported_at.isoformat(),
+            exported_at,
         )
         console.print(table)
 
