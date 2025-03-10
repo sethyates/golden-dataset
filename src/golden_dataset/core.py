@@ -77,7 +77,7 @@ def parse_import_path(import_path: str) -> tuple[str, str]:
         - If no colon is present, returns ("", import_path)
     """
     if ":" not in import_path:
-        return "", import_path
+        return import_path, import_path
 
     module_path, object_name = import_path.split(":", 1)
 
@@ -380,9 +380,6 @@ def get_sync_session_factory(
     Returns:
         A callable that creates a context manager for sync sessions
     """
-    if not isinstance(factory, async_sessionmaker) and not isinstance(factory, sessionmaker):
-        factory = factory()
-
     if isinstance(factory, async_sessionmaker) or inspect.iscoroutinefunction(factory):
 
         @contextlib.contextmanager

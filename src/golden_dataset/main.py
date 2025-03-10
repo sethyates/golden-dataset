@@ -24,7 +24,7 @@ from sqlalchemy import exc
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from .core import bulk_delete, bulk_import, get_function, is_same_class
-from .exc import DatasetNotFoundError, GoldenError
+from .exc import DatasetNotFoundError, GoldenError, VariantNotFoundError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -83,10 +83,22 @@ class GoldenDataset(BaseModel):
     title: str | None = Field(default=None)
     description: str = Field(default="")
     dependencies: list[str] = Field(default_factory=list)
+    variants: list[str] = Field(default_factory=list)
     tables: dict[str, int] = Field(default_factory=lambda: defaultdict(int))
     exported_at: datetime.datetime | None = Field(default=None)
 
     _objects: dict[str, dict[Any, Any]] = PrivateAttr(default_factory=lambda: defaultdict(dict))
+    _current_variant: str | None = None
+
+    @property
+    def variant(self) -> str | None:
+        return self._current_variant
+
+    def set_variant(self, variant: str) -> None:
+        self._current_variant = variant
+        self.variants = self.variants or []
+        if variant and variant not in self.variants:
+            self.variants.append(variant)
 
     def remove_from_session(self, base: DeclarativeMeta, session: Session) -> dict[str, int]:
         """
@@ -123,7 +135,7 @@ class GoldenDataset(BaseModel):
 
     def clear(self) -> None:
         """Clear all data from the dataset."""
-        self.tables = dict()
+        self.tables = defaultdict(int)
         self._objects = defaultdict(dict)
 
     def add[ModelType](self, obj: ModelType) -> ModelType:
@@ -250,6 +262,8 @@ class GoldenDataset(BaseModel):
                 pk_name = primary_keys[0]
                 if hasattr(obj, pk_name) and getattr(obj, pk_name) is not None:
                     return getattr(obj, pk_name)
+
+        # TODO: leverage default_factory
 
         # Generate a UUID if no ID is found
         new_id = uuid.uuid4()
@@ -527,7 +541,10 @@ class GoldenManager:
         return GoldenSession(dataset)
 
     def dataset(
-        self, name: str, title: str | None = None, description: str | None = None, dependencies: list[str] | None = None
+        self, name: str,
+            title: str | None = None,
+            description: str | None = None,
+            dependencies: list[str] | None = None,
     ) -> GoldenDataset:
         """
         Create a new dataset.
@@ -542,7 +559,10 @@ class GoldenManager:
             A new golden dataset
         """
         return GoldenDataset(
-            name=name, title=title or name.title() or "", description=description or "", dependencies=dependencies or []
+            name=name,
+            title=title or name.title() or "",
+            description=description or "",
+            dependencies=dependencies or [],
         )
 
     def list_datasets(self) -> list[GoldenDataset]:
@@ -573,12 +593,13 @@ class GoldenManager:
 
         return datasets
 
-    def open_dataset(self, dataset_name: str) -> GoldenDataset:
+    def open_dataset(self, dataset_name: str, variant: str | None = None) -> GoldenDataset:
         """
         Open a dataset from the datasets directory.
 
         Args:
             dataset_name: Name of Dataset to open
+            variant: The variant to open
 
         Returns:
             The opened Golden Dataset
@@ -600,18 +621,27 @@ class GoldenManager:
 
         try:
             with open(metadata_file) as f:
-                return GoldenDataset.model_validate_json(f.read())
+                dataset = GoldenDataset.model_validate_json(f.read())
+                if variant:
+                    if variant not in dataset.variants:
+                        raise VariantNotFoundError(f"Variant {variant} not found in dataset")
+                dataset.set_variant(variant)
+
+                return dataset
+        except GoldenError:
+            raise
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid metadata file {metadata_file}: {e}") from e
         except Exception as e:
             raise ValueError(f"Could not open dataset {dataset_name}: {e}") from e
 
-    def load_dataset(self, dataset_name: str) -> GoldenDataset:
+    def load_dataset(self, dataset_name: str, variant: str | None = None) -> GoldenDataset:
         """
         Load a dataset, including all its data.
 
         Args:
             dataset_name: Name of the dataset to load
+            variant: Name of the variant to load
 
         Returns:
             The loaded dataset with all its data
@@ -619,11 +649,14 @@ class GoldenManager:
         Raises:
             DatasetNotFoundError: If the dataset does not exist
         """
-        dataset = self.open_dataset(dataset_name)
+        dataset = self.open_dataset(dataset_name, variant=variant)
 
         data: dict[str, dict[Any, Any]] = defaultdict(dict)
         for table_name in dataset.tables:
-            file_path = self.datasets_dir / dataset_name / f"{table_name}.json"
+            file_path = self.datasets_dir / dataset_name
+            if dataset.variant:
+                file_path = file_path / dataset.variant
+            file_path = file_path / f"{table_name}.json"
             if not file_path.exists():
                 logger.warning(f"Table file {file_path} does not exist")
                 continue
@@ -653,12 +686,17 @@ class GoldenManager:
         """
         # Create directory for this dataset
         dataset_dir = self.datasets_dir / dataset.name
-        dataset_dir.mkdir(parents=True, exist_ok=True)
 
         # Write each table to a separate file
         for table_name in dataset.get_tables():
             table_data = dataset.get_table(table_name)
-            file_path = dataset_dir / f"{table_name}.json"
+
+            file_path = dataset_dir
+            if dataset.variant:
+                file_path = file_path / dataset.variant
+            file_path.mkdir(parents=True, exist_ok=True)
+            file_path = file_path / f"{table_name}.json"
+
             try:
                 with open(file_path, "w") as f:
                     json.dump(table_data, f, indent=2, default=str)
@@ -678,12 +716,13 @@ class GoldenManager:
             logger.error(f"Error writing metadata: {e}")
             raise OSError("Could not write metadata") from e
 
-    def generate_dataset(self, fn: str) -> GoldenDataset:
+    def generate_dataset(self, fn: str, variant: str | None = None, existing_dataset: GoldenDataset | None = None) -> GoldenDataset:
         """
         Generate a dataset from a generator function.
 
         Args:
             fn: Path to the generator function in the format "module.path:function_name"
+            variant: Name of the variant
 
         Returns:
             The generated dataset
@@ -701,23 +740,25 @@ class GoldenManager:
 
         title = ""
         description = ""
-        dependencies = [arg["name"] for arg in args]
+        dependencies = []
         if getattr(func, "__golden__", False):
             name = func.__name__ or name
             title = getattr(func, "__title__", "")
             description = getattr(func, "__description__", "")
             dependencies.extend(getattr(func, "__dependencies__", []) or [])
 
-        dataset = self.dataset(name=name, title=title, description=description, dependencies=list(set(dependencies)))
+        dataset = existing_dataset or self.dataset(name=name, title=title, description=description, dependencies=list(set(dependencies)))
+        if variant:
+            dataset.set_variant(variant)
 
         session = self.session(dataset)
         try:
-            func_args = [arg.get("default", None) for arg in args]
+            func_args = [(arg.get("default", variant) or variant) for arg in args]
             func(session, *func_args)
             session.commit()
         except Exception as e:
             session.rollback()
-            raise GoldenError(f"Error generating dataset: {e}") from e
+            raise GoldenError(f"Error generating dataset") from e
 
         return dataset
 

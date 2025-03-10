@@ -1,5 +1,4 @@
 import datetime
-import importlib
 import sys
 from typing import Any
 from unittest import mock
@@ -23,25 +22,6 @@ def sample_params() -> list[core.ParamInfo]:
             "type": str,
         }
     ]
-
-
-@pytest.fixture
-def create_test_module():
-    """Create a temporary module for testing imports."""
-
-    def _create_module(module_name, content):
-        spec = importlib.util.spec_from_loader(
-            module_name, loader=importlib.machinery.SourceFileLoader(module_name, "<string>")
-        )
-        if spec is None:
-            return None
-
-        module = importlib.util.module_from_spec(spec)
-        exec(content, module.__dict__)
-        sys.modules[module_name] = module
-        return module
-
-    return _create_module
 
 
 @pytest.fixture
@@ -179,7 +159,7 @@ def test_parse_import_path():
         core.parse_import_path("module.path:")
 
 
-def test_get_function(create_test_module, cleanup_modules):
+def test_get_function(cleanup_modules):
     """Test the get_function function."""
     # Test getting a function
     func, name, params = core.get_function("test_module_function:test_function", generator_root="tests.fixtures")
@@ -203,7 +183,7 @@ def test_get_function(create_test_module, cleanup_modules):
         core.get_function("test_module_function:test_not_callable", generator_root="tests.fixtures")
 
 
-def test_find_class_by_name(create_test_module, cleanup_modules):
+def test_find_class_by_name(cleanup_modules):
     """Test the find_class_by_name function."""
     # Test finding a class
     cls = core.find_class_by_name("TestClass1", ["test_module1", "test_module2"], package="tests.fixtures")
@@ -220,7 +200,7 @@ def test_find_class_by_name(create_test_module, cleanup_modules):
     assert cls is None
 
 
-def test_get_sqlalchemy_base(create_test_module, cleanup_modules):
+def test_get_sqlalchemy_base(cleanup_modules):
     """Test the get_sqlalchemy_base function."""
     # Mock find_class_by_name to return the Base from our test module
     # Test getting the Base class
@@ -366,7 +346,7 @@ def test_bulk_delete(sqlalchemy_base, sqlalchemy_session, sample_dataset):
     #     core.bulk_delete(bad_dataset, sqlalchemy_base, sqlalchemy_session)
 
 
-def test_get_model_class(create_test_module, cleanup_modules):
+def test_get_model_class(cleanup_modules):
     """Test the get_model_class function."""
     # Create a test module with a model class
     # Test finding a model class
@@ -395,7 +375,7 @@ def test_sum_dicts():
 
 
 # Additional tests for edge cases and error handling
-def test_get_sqlalchemy_engine(create_test_module, cleanup_modules):
+def test_get_sqlalchemy_engine(cleanup_modules):
     """Test the get_sqlalchemy_engine function."""
     # Test finding the engine
     engine = core.get_sqlalchemy_engine(search_path=["test_module_engine"], package="tests.fixtures")
@@ -406,7 +386,7 @@ def test_get_sqlalchemy_engine(create_test_module, cleanup_modules):
     assert engine is None
 
 
-def test_get_sqlalchemy_session_factory(create_test_module, cleanup_modules, sqlalchemy_engine):
+def test_get_sqlalchemy_session_factory(cleanup_modules, sqlalchemy_engine):
     """Test the get_sqlalchemy_session_factory function."""
     # Test finding the session factory
     with mock.patch("golden_dataset.core.find_class_by_name") as mock_find_class:

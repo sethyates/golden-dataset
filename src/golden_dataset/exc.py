@@ -29,6 +29,12 @@ class ModelNotFoundError(DatabaseError):
     pass
 
 
+class VariantNotFoundError(DatabaseError):
+    """Exception raised when a model class cannot be found."""
+
+    pass
+
+
 class EntityImportError(DatabaseError):
     """Exception raised when an entity cannot be imported."""
 

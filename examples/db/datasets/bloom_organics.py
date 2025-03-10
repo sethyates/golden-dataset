@@ -14,8 +14,8 @@ from golden_dataset import GoldenSession, golden
 from ..models import Brand, Brandkit, Event, Font
 
 
-@golden(dependencies=["base"], title="My title", description="My description")
-def bloom_organics(session: GoldenSession, base):
+@golden(title="My title", description="My description", dependencies=["base"])
+def bloom_organics(session: GoldenSession, variant: str | None = None):
     """
     Bloom Organics dataset with a brand and related data.
 
