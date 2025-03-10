@@ -7,6 +7,7 @@ import datetime
 import importlib
 import inspect
 import logging
+import re
 import sys
 from collections.abc import Callable, Generator
 from pathlib import Path
@@ -14,7 +15,7 @@ from typing import Any, TypedDict, TypeVar, get_type_hints
 
 from sqlalchemy import Engine
 from sqlalchemy import inspect as sqlalchemy_inspect
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, sessionmaker
 
 from .exc import EntityImportError, GoldenError, ModelNotFoundError
@@ -125,9 +126,6 @@ def get_function(
         sys.path.insert(0, "")
 
         # Parse the module path and function name
-        if ":" not in module_path_and_func:
-            raise ValueError(f"Invalid format: {module_path_and_func}. Expected 'module.path:function_name'")
-
         module_path, func_name = parse_import_path(module_path_and_func)
 
         try:
@@ -255,6 +253,56 @@ def get_sqlalchemy_base(
     return None
 
 
+def ensure_sync_engine(
+    engine_or_factory: Engine | AsyncEngine | Callable[..., Engine | AsyncEngine], **kwargs: Any
+) -> Engine:
+    """
+    Ensures that we have a synchronous Engine instance whether we're given:
+    - A factory function returning an Engine or AsyncEngine
+    - A direct Engine instance
+    - A direct AsyncEngine instance
+
+    Args:
+        engine_or_factory: An Engine, AsyncEngine, or a callable that returns either
+        **kwargs: Optional arguments to pass to the factory function if provided
+
+    Returns:
+        A synchronous Engine instance
+    """
+    # First, get the engine (might be async or sync)
+    if callable(engine_or_factory) and not isinstance(engine_or_factory, Engine | AsyncEngine):
+        # It's a factory function - call it with any provided kwargs
+        engine = engine_or_factory(**kwargs)
+    else:
+        # It's already an engine instance
+        engine = engine_or_factory
+
+    # Then, ensure it's a sync engine
+    if not isinstance(engine, AsyncEngine):
+        # It's already a sync engine
+        return engine
+
+    # Convert async engine URL to sync URL
+    url = str(engine.url)
+
+    if "+asyncpg" in url:
+        # Replace asyncpg with psycopg2
+        sync_url = url.replace("+asyncpg", "+psycopg2")
+    elif "+aiosqlite" in url:
+        # Replace aiosqlite with sqlite
+        sync_url = url.replace("+aiosqlite", "")
+    else:
+        # Generic fallback - remove any +async adapter
+        sync_url = re.sub(r"\+async\w*", "", url)
+
+    # Create a new sync engine with the converted URL
+    from sqlalchemy import create_engine
+
+    sync_url = sync_url.replace(":***", f":{engine.url.password}")
+
+    return create_engine(sync_url)
+
+
 def get_sqlalchemy_engine(
     engine_name: str = "engine",
     search_path: list[str] | None = None,
@@ -288,11 +336,14 @@ def get_sqlalchemy_engine(
     if engine_module:
         search_path.insert(0, engine_module)
 
-    engine = find_class_by_name(engine_name, search_path, package)
-    if engine:
-        if hasattr(engine, "sync_engine"):
-            return engine.sync_engine  # type: ignore
-        return engine  # type: ignore
+    engine_or_factory = find_class_by_name(engine_name, search_path, package)
+    if engine_or_factory:
+        if callable(engine_or_factory) and not isinstance(engine_or_factory, Engine):
+            engine = engine_or_factory()
+        else:
+            engine = engine_or_factory
+
+        return ensure_sync_engine(engine)  # type: ignore
 
     logger.warning(f"Could not find SQLAlchemy engine '{engine_name}' in any of the search paths")
     return None
@@ -317,7 +368,7 @@ def sync_session_from_async(async_session: AsyncSession) -> Generator[Session, N
 
 
 def get_sync_session_factory(
-    factory: sessionmaker[Any] | async_sessionmaker[Any],
+    factory: sessionmaker[Any] | async_sessionmaker[Any] | Callable[..., sessionmaker[Any] | async_sessionmaker[Any]],
 ) -> Callable[..., contextlib.AbstractContextManager[Session]]:
     """
     Takes either a sync or async sessionmaker and returns a factory function
@@ -329,8 +380,10 @@ def get_sync_session_factory(
     Returns:
         A callable that creates a context manager for sync sessions
     """
+    if not isinstance(factory, async_sessionmaker) and not isinstance(factory, sessionmaker):
+        factory = factory()
 
-    if isinstance(factory, async_sessionmaker):
+    if isinstance(factory, async_sessionmaker) or inspect.iscoroutinefunction(factory):
 
         @contextlib.contextmanager
         def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
@@ -342,7 +395,9 @@ def get_sync_session_factory(
                 # Close the async session explicitly
                 # This can't be done asynchronously here, but that's ok
                 # for our use case since we don't need to wait for it
-                async_session.close()
+                import asyncio
+
+                asyncio.run(async_session.aclose())
 
         return sync_factory
     else:
