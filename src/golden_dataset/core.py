@@ -402,6 +402,8 @@ def get_sync_session_factory(
         @contextlib.contextmanager
         def sync_factory(**kwargs: Any) -> Generator[Session, None, None]:
             session = factory(**kwargs)
+            if isinstance(session, sessionmaker):
+                session = session()
             try:
                 yield session
             finally:
