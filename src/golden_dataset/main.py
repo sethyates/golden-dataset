@@ -541,10 +541,11 @@ class GoldenManager:
         return GoldenSession(dataset)
 
     def dataset(
-        self, name: str,
-            title: str | None = None,
-            description: str | None = None,
-            dependencies: list[str] | None = None,
+        self,
+        name: str,
+        title: str | None = None,
+        description: str | None = None,
+        dependencies: list[str] | None = None,
     ) -> GoldenDataset:
         """
         Create a new dataset.
@@ -625,7 +626,7 @@ class GoldenManager:
                 if variant:
                     if variant not in dataset.variants:
                         raise VariantNotFoundError(f"Variant {variant} not found in dataset")
-                dataset.set_variant(variant)
+                    dataset.set_variant(variant)
 
                 return dataset
         except GoldenError:
@@ -716,7 +717,9 @@ class GoldenManager:
             logger.error(f"Error writing metadata: {e}")
             raise OSError("Could not write metadata") from e
 
-    def generate_dataset(self, fn: str, variant: str | None = None, existing_dataset: GoldenDataset | None = None) -> GoldenDataset:
+    def generate_dataset(
+        self, fn: str, variant: str | None = None, existing_dataset: GoldenDataset | None = None
+    ) -> GoldenDataset:
         """
         Generate a dataset from a generator function.
 
@@ -738,16 +741,18 @@ class GoldenManager:
         ):
             raise GoldenError(f"Generator {fn} must have session as first parameter")
 
-        title = ""
-        description = ""
-        dependencies = []
+        title: str = ""
+        description: str = ""
+        dependencies: list[str] = []
         if getattr(func, "__golden__", False):
             name = func.__name__ or name
             title = getattr(func, "__title__", "")
             description = getattr(func, "__description__", "")
             dependencies.extend(getattr(func, "__dependencies__", []) or [])
 
-        dataset = existing_dataset or self.dataset(name=name, title=title, description=description, dependencies=list(set(dependencies)))
+        dataset = existing_dataset or self.dataset(
+            name=name, title=title, description=description, dependencies=list(set(dependencies))
+        )
         if variant:
             dataset.set_variant(variant)
 
@@ -758,7 +763,7 @@ class GoldenManager:
             session.commit()
         except Exception as e:
             session.rollback()
-            raise GoldenError(f"Error generating dataset") from e
+            raise GoldenError("Error generating dataset") from e
 
         return dataset
 

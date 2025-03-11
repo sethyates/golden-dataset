@@ -1,6 +1,7 @@
 """
 Command-line interface for golden-dataset.
 """
+
 import contextlib
 import logging
 import sys
@@ -11,8 +12,8 @@ from rich.console import Console
 from rich.table import Table
 
 from golden_dataset.core import get_sqlalchemy_base, get_sqlalchemy_engine, get_sqlalchemy_session_factory, sum_dicts
-from golden_dataset.exc import GoldenError, DatasetNotFoundError
-from golden_dataset.main import GoldenManager, GoldenSettings
+from golden_dataset.exc import DatasetNotFoundError, GoldenError
+from golden_dataset.main import GoldenDataset, GoldenManager, GoldenSettings
 
 app = typer.Typer(help="Golden dataset management")
 console = Console()
@@ -142,12 +143,12 @@ def show_dataset(
 
 @app.command("generate")
 def generate_dataset(
-        dataset_name: str = typer.Argument(..., help="Name of the dataset to generate"),
-        variant: str | None = typer.Option(None, help="Variant to generate"),
-        generators: str = typer.Option(settings.generators, help="Module containing generators"),
-        base_class_name: str = typer.Option(settings.base_class_name, help="Base class name"),
-        engine_name: str = typer.Option(settings.engine_name, help="Engine instance name"),
-        session_factory_name: str = typer.Option(settings.session_factory_name, help="Session factory name"),
+    dataset_name: str = typer.Argument(..., help="Name of the dataset to generate"),
+    variant: str | None = typer.Option(None, help="Variant to generate"),
+    generators: str = typer.Option(settings.generators, help="Module containing generators"),
+    base_class_name: str = typer.Option(settings.base_class_name, help="Base class name"),
+    engine_name: str = typer.Option(settings.engine_name, help="Engine instance name"),
+    session_factory_name: str = typer.Option(settings.session_factory_name, help="Session factory name"),
 ) -> None:
     """
     Generate a golden dataset from a generator function.
@@ -204,12 +205,12 @@ def generate_dataset(
 
 
 def recursively_load_datasets(
-        dataset_name: str,
-        base: Any,
-        session: Any,
-        recurse: bool = True,
-        marks: dict[str, bool] | None = None,
-        variant: str | None = None,
+    dataset_name: str,
+    base: Any,
+    session: Any,
+    recurse: bool = True,
+    marks: dict[str, bool] | None = None,
+    variant: str | None = None,
 ) -> dict[str, int]:
     if marks is None:
         marks = dict[str, bool]()
@@ -225,7 +226,9 @@ def recursively_load_datasets(
 
     if dataset is not None and recurse:
         for dependency in dataset.dependencies:
-            results = sum_dicts(results, recursively_load_datasets(dependency, base, session, marks=marks, variant=variant))
+            results = sum_dicts(
+                results, recursively_load_datasets(dependency, base, session, marks=marks, variant=variant)
+            )
 
     console.print(f"[green]Loading {dataset_name}[/green]")
     results = sum_dicts(results, dataset.add_to_session(base, session))
@@ -234,9 +237,9 @@ def recursively_load_datasets(
 
 @app.command("load")
 def load_dataset(
-        dataset_name: str = typer.Argument(..., help="Name of the dataset to load"),
-        variant: str | None = typer.Option(None, help="Variant to load"),
-        depends: bool = typer.Option(True, help="Whether to load dependencies or not"),
+    dataset_name: str = typer.Argument(..., help="Name of the dataset to load"),
+    variant: str | None = typer.Option(None, help="Variant to load"),
+    depends: bool = typer.Option(True, help="Whether to load dependencies or not"),
 ) -> None:
     """
     Load a dataset into a database.
@@ -303,8 +306,8 @@ def load_dataset(
 
 @app.command("unload")
 def unload_dataset(
-        dataset_name: str = typer.Argument(..., help="Name of the dataset to unload"),
-        variant: str | None = typer.Option(None, help="Variant to unload"),
+    dataset_name: str = typer.Argument(..., help="Name of the dataset to unload"),
+    variant: str | None = typer.Option(None, help="Variant to unload"),
 ) -> None:
     """
     Remove a dataset into a database.

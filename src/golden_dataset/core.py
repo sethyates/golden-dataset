@@ -368,7 +368,7 @@ def sync_session_from_async(async_session: AsyncSession) -> Generator[Session, N
 
 
 def get_sync_session_factory(
-    factory: sessionmaker[Any] | async_sessionmaker[Any] | Callable[..., sessionmaker[Any] | async_sessionmaker[Any]],
+    factory: sessionmaker[Any] | async_sessionmaker[Any],
 ) -> Callable[..., contextlib.AbstractContextManager[Session]]:
     """
     Takes either a sync or async sessionmaker and returns a factory function
