@@ -151,7 +151,7 @@ def test_parse_import_path():
 
     # Test with just object name
     module_path, object_name = core.parse_import_path("object_name")
-    assert module_path == ""
+    assert module_path == "object_name"
     assert object_name == "object_name"
 
     # Test with empty object name

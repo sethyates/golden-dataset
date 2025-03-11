@@ -687,6 +687,7 @@ class GoldenManager:
         """
         # Create directory for this dataset
         dataset_dir = self.datasets_dir / dataset.name
+        dataset_dir.mkdir(parents=True, exist_ok=True)
 
         # Write each table to a separate file
         for table_name in dataset.get_tables():

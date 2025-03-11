@@ -39,7 +39,6 @@ def test_settings(temp_dir):
 @pytest.fixture
 def test_manager(test_settings):
     """Create a test golden manager."""
-    print(test_settings)
     return GoldenManager(settings=test_settings)
 
 

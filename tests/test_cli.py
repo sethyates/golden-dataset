@@ -309,7 +309,7 @@ def test_generate_dataset_success(cli_runner, test_settings):
 
         # Verify correct parameters were passed
         mock_manager_cls.assert_called_once()
-        mock_manager.generate_dataset.assert_called_once_with("test_generators.test_generator:sample_generator")
+        mock_manager.generate_dataset.assert_called_once_with("test_generators.test_generator:sample_generator", variant=None, existing_dataset=mock.ANY)
         mock_manager.dump_dataset.assert_called_once_with(mock_dataset)
 
 
@@ -373,6 +373,7 @@ def test_load_dataset_success(cli_runner, test_settings, sample_dataset, mock_sq
             mocks["base"].return_value,
             mocks["session_factory"].return_value.return_value,
             recurse=True,
+            variant=None
         )
 
 
@@ -412,6 +413,7 @@ def test_load_dataset_with_no_depends(cli_runner, test_settings, sample_dataset,
             mocks["base"].return_value,
             mocks["session_factory"].return_value.return_value,
             recurse=False,
+            variant=None,
         )
 
 
@@ -524,7 +526,7 @@ def test_unload_dataset_success(cli_runner, test_settings, sample_dataset, mock_
         mocks["session_factory"].assert_called_once()
 
         # Verify dataset was loaded and removed
-        mock_manager.load_dataset.assert_called_once_with(sample_dataset.name)
+        mock_manager.load_dataset.assert_called_once_with(sample_dataset.name, None)
         mock_dataset.remove_from_session.assert_called_once_with(
             mocks["base"].return_value, mocks["session_factory"].return_value.return_value
         )
@@ -603,7 +605,7 @@ def test_recursively_load_datasets(test_settings, sample_dataset, dependency_dat
         mock_manager = mock.MagicMock()
         mock_manager_cls.return_value = mock_manager
 
-        def mock_load_dataset(name):
+        def mock_load_dataset(name, variant: str | None = None):
             if name == sample_dataset.name:
                 mock_dataset = mock.MagicMock()
                 mock_dataset.dependencies = []
@@ -637,7 +639,7 @@ def test_recursively_load_datasets(test_settings, sample_dataset, dependency_dat
         mock_circular.dependencies = ["circular"]
         mock_circular.add_to_session.return_value = {"circular": 1}
 
-        def mock_load_circular(name):
+        def mock_load_circular(name, variant: str | None = None):
             return mock_circular if name == "circular" else None
 
         mock_manager.load_dataset.side_effect = mock_load_circular
