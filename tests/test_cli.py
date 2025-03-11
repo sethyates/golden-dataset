@@ -309,7 +309,9 @@ def test_generate_dataset_success(cli_runner, test_settings):
 
         # Verify correct parameters were passed
         mock_manager_cls.assert_called_once()
-        mock_manager.generate_dataset.assert_called_once_with("test_generators.test_generator:sample_generator", variant=None, existing_dataset=mock.ANY)
+        mock_manager.generate_dataset.assert_called_once_with(
+            "test_generators.test_generator:sample_generator", variant=None, existing_dataset=mock.ANY
+        )
         mock_manager.dump_dataset.assert_called_once_with(mock_dataset)
 
 
@@ -373,7 +375,7 @@ def test_load_dataset_success(cli_runner, test_settings, sample_dataset, mock_sq
             mocks["base"].return_value,
             mocks["session_factory"].return_value.return_value,
             recurse=True,
-            variant=None
+            variant=None,
         )
 
 
