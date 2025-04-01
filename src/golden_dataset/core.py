@@ -727,7 +727,7 @@ def bulk_import(
                 if fail_on_error:
                     raise error from e
                 errors.append(error)
-                logger.error(str(error))
+                # logger.error(str(error))
 
         success_counts[table_name] = success_count
 

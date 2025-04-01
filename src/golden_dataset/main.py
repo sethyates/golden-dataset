@@ -155,7 +155,7 @@ class GoldenDataset(BaseModel):
 
         # Store the object in the appropriate table
         self._objects[table_name][obj_id] = obj
-        self.tables[table_name] = self.tables[table_name] + 1
+        self.tables[table_name] = self.tables.get(table_name, 0) + 1
 
         return obj
 
@@ -754,17 +754,21 @@ class GoldenManager:
         dataset = existing_dataset or self.dataset(
             name=name, title=title, description=description, dependencies=list(set(dependencies))
         )
+
+        func_args = [(variant or arg.get("default", variant)) for arg in args]
+        if not variant and func_args:
+            variant = func_args[0]
         if variant:
             dataset.set_variant(variant)
 
         session = self.session(dataset)
         try:
-            func_args = [(arg.get("default", variant) or variant) for arg in args]
             func(session, *func_args)
             session.commit()
         except Exception as e:
             session.rollback()
-            raise GoldenError("Error generating dataset") from e
+            logging.exception(e)
+            raise GoldenError(f"Error generating dataset: {str(e)}") from e
 
         return dataset
 
