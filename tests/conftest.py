@@ -7,7 +7,7 @@ from collections.abc import Generator
 
 import pytest
 
-from golden_dataset import GoldenSession
+from golden_dataset.main import GoldenSessionImpl
 
 
 @pytest.fixture(scope="session")
@@ -22,4 +22,4 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest.fixture
 def empty_session():
     """Create an empty GoldenSession."""
-    return GoldenSession()
+    return GoldenSessionImpl()

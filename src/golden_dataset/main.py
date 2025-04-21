@@ -21,6 +21,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 from sqlalchemy import exc
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from .core import bulk_delete, bulk_import, get_function, is_same_class
@@ -354,7 +355,7 @@ class GoldenDataset(BaseModel):
         return name
 
 
-class GoldenSession:
+class GoldenSessionImpl:
     """
     A session-like interface for golden datasets that mimics SQLAlchemy/SQLModel sessions.
 
@@ -513,6 +514,9 @@ class GoldenSession:
         self.close()
 
 
+GoldenSession = GoldenSessionImpl | AsyncSession | Session
+
+
 class GoldenManager:
     """Manager for golden datasets."""
 
@@ -538,7 +542,7 @@ class GoldenManager:
         Returns:
             A new golden session
         """
-        return GoldenSession(dataset)
+        return GoldenSessionImpl(dataset)
 
     def dataset(
         self,

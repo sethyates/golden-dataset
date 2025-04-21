@@ -6,6 +6,7 @@ import pytest
 
 from golden_dataset import GoldenDataset, GoldenManager, GoldenSession, GoldenSettings, golden
 from golden_dataset.exc import DatasetNotFoundError, GoldenError
+from golden_dataset.main import GoldenSessionImpl
 
 # Import the module to test
 from .fixtures.mock_module import Post, SimpleUser, User, UserModel
@@ -279,7 +280,7 @@ def test_golden_dataset_get_model_table_name():
 def test_golden_session_initialization():
     """Test initializing a golden session."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     assert session.dataset is dataset
 
@@ -287,7 +288,7 @@ def test_golden_session_initialization():
 def test_golden_session_add():
     """Test adding an object to a session."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     user = User(id=1, name="Test User", email="test@example.com")
     result = session.add(user)
@@ -299,7 +300,7 @@ def test_golden_session_add():
 def test_golden_session_add_all():
     """Test adding multiple objects to a session."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     user1 = User(id=1, name="User 1", email="user1@example.com")
     user2 = User(id=2, name="User 2", email="user2@example.com")
@@ -313,7 +314,7 @@ def test_golden_session_add_all():
 def test_golden_session_query():
     """Test querying objects from a session."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     user = User(id=1, name="Test User", email="test@example.com")
     session.add(user)
@@ -326,7 +327,7 @@ def test_golden_session_query():
 def test_golden_session_get():
     """Test getting an object by ID from a session."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     user = User(id=1, name="Test User", email="test@example.com")
     session.add(user)
@@ -341,7 +342,7 @@ def test_golden_session_get():
 def test_golden_session_operations_on_closed_session():
     """Test operations on a closed session raise exceptions."""
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     # Close the session
     session.close()
@@ -377,7 +378,7 @@ def test_golden_session_context_manager():
     dataset = GoldenDataset(name="test")
 
     # Normal execution
-    with GoldenSession(dataset) as session:
+    with GoldenSessionImpl(dataset) as session:
         user = User(id=1, name="Test User", email="test@example.com")
         session.add(user)
 
@@ -386,7 +387,7 @@ def test_golden_session_context_manager():
 
     # Exception in context
     try:
-        with GoldenSession(dataset) as session:
+        with GoldenSessionImpl(dataset) as session:
             session.add(User(id=2))
             raise ValueError("Test exception")
     except ValueError:
@@ -580,7 +581,7 @@ def test_golden_decorator_function_execution():
 
     # Create a dataset and session
     dataset = GoldenDataset(name="test")
-    session = GoldenSession(dataset)
+    session = GoldenSessionImpl(dataset)
 
     # Execute the function
     result = test_generator(session, param1="custom")
